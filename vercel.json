@@ -1,7 +1,4 @@
 {
-    "version": 2,
-    "routes": [
-      { "src": "/api/(.*)", "dest": "/api/index.py" }
-    ]
-  }
-  
+  "builds": [{ "src": "main.py", "use": "@vercel/python" }],
+  "routes": [{ "src": "/(.*)", "dest": "./vercel-fastapi/main.py" }]
+}

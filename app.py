@@ -53,62 +53,126 @@
 
 
 
-from fastapi import FastAPI, HTTPException, Query
-from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Optional
-import csv
-from fastapi.responses import JSONResponse
-from fastapi.encoders import jsonable_encoder
-import json  # For custom formatting
+# from fastapi import FastAPI, HTTPException, Query
+# from fastapi.middleware.cors import CORSMiddleware
+# from typing import List, Optional
+# import csv
+# from fastapi.responses import JSONResponse
+# from fastapi.encoders import jsonable_encoder
+# import json  # For custom formatting
 
+# app = FastAPI()
+
+# # Enable CORS to allow GET requests from any origin
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],  # Allow all origins
+#     allow_methods=["GET"],  # Allow only GET requests
+#     allow_headers=["*"],  # Allow all headers
+# )
+
+# # Global variable to hold student data
+# students = []
+
+# # Load data from the CSV file
+# def load_data(filename: str):
+#     global students
+#     try:
+#         with open(filename, mode="r") as file:
+#             csv_reader = csv.DictReader(file)
+#             # Convert CSV rows to a list of dictionaries
+#             students = [{"studentId": int(row["studentId"]), "class": row["class"]} for row in csv_reader]
+#     except Exception as e:
+#         print(f"Error loading data from {filename}: {e}")
+#         students = []
+
+
+# # Load the CSV file into memory
+# load_data("./q-fastapiGA2.csv")  # Update with the correct file path
+
+# @app.get("/api")
+# async def get_students(class_filter: Optional[List[str]] = Query(None)):
+#     """
+#     Endpoint to retrieve student data.
+#     - If no query parameter is provided, return all students.
+#     - If class query parameters are provided, filter students by class.
+#     """
+#     if not students:
+#         raise HTTPException(status_code=500, detail="Student data not loaded.")
+    
+#     if class_filter:
+#         # Filter students by the provided class query parameter(s)
+#         filtered_students = [student for student in students if student["class"] in class_filter]
+#     else:
+#         filtered_students = students
+
+#     # Format response with pretty indentation using jsonable_encoder
+#     response_content = jsonable_encoder({"students": filtered_students})
+    
+#     # Convert the response to a JSON string with pretty indentation
+#     json_response = json.dumps(response_content, indent=4)
+    
+#     return JSONResponse(content=json_response)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+import pandas as pd
+from typing import List
+
+# Initialize FastAPI app
 app = FastAPI()
 
-# Enable CORS to allow GET requests from any origin
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins
-    allow_methods=["GET"],  # Allow only GET requests
-    allow_headers=["*"],  # Allow all headers
-)
+# Enable CORS for all origins
+app.add_middleware(CORSMiddleware, allow_origins=["*"])
 
-# Global variable to hold student data
-students = []
+# Load the CSV file into a DataFrame (adjust path if necessary)
+df = pd.read_csv('q-fastapiGA2.csv')
 
-# Load data from the CSV file
-def load_data(filename: str):
-    global students
-    try:
-        with open(filename, mode="r") as file:
-            csv_reader = csv.DictReader(file)
-            # Convert CSV rows to a list of dictionaries
-            students = [{"studentId": int(row["studentId"]), "class": row["class"]} for row in csv_reader]
-    except Exception as e:
-        print(f"Error loading data from {filename}: {e}")
-        students = []
+# Convert DataFrame to list of dictionaries
+students = df.to_dict(orient="records")
 
-# Load the CSV file into memory
-load_data("./q-fastapiGA2.csv")  # Update with the correct file path
-
+# API endpoint to get all students or filter by class
 @app.get("/api")
-async def get_students(class_filter: Optional[List[str]] = Query(None)):
-    """
-    Endpoint to retrieve student data.
-    - If no query parameter is provided, return all students.
-    - If class query parameters are provided, filter students by class.
-    """
-    if not students:
-        raise HTTPException(status_code=500, detail="Student data not loaded.")
-    
-    if class_filter:
-        # Filter students by the provided class query parameter(s)
-        filtered_students = [student for student in students if student["class"] in class_filter]
-    else:
-        filtered_students = students
+async def get_students(class_: List[str] = None):
+    if class_:
+        # Filter students by specified classes
+        filtered_students = [student for student in students if student["class"] in class_]
+        return {"students": filtered_students}
+    return {"students": students}
 
-    # Format response with pretty indentation using jsonable_encoder
-    response_content = jsonable_encoder({"students": filtered_students})
-    
-    # Convert the response to a JSON string with pretty indentation
-    json_response = json.dumps(response_content, indent=4)
-    
-    return JSONResponse(content=json_response)
+# Error handling for missing or incorrect data
+@app.get("/api/{student_id}")
+async def get_student(student_id: int):
+    student = next((s for s in students if s["studentId"] == student_id), None)
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    return student
+
+# Middleware to log request timing
+@app.middleware("http")
+async def log_request_time(request: Request, call_next):
+    import time
+    start_time = time.time()
+    response = await call_next(request)
+    response.headers["X-Request-Time"] = str(time.time() - start_time)
+    return response
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
