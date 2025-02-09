@@ -128,51 +128,90 @@
 
 
 
+# from fastapi import FastAPI, HTTPException, Request
+# from fastapi.middleware.cors import CORSMiddleware
+# import pandas as pd
+# from typing import List
+
+# # Initialize FastAPI app
+# app = FastAPI()
+
+# # Enable CORS for all origins
+# app.add_middleware(CORSMiddleware, allow_origins=["*"])
+
+# # Load the CSV file into a DataFrame (adjust path if necessary)
+# df = pd.read_csv('./q-fastapiGA2.csv')
+
+# # Convert DataFrame to list of dictionaries
+# students = df.to_dict(orient="records")
+
+# # API endpoint to get all students or filter by class
+# @app.get("/api")
+# async def get_students(class_: List[str] = None):
+#     if class_:
+#         # Filter students by specified classes
+#         filtered_students = [student for student in students if student["class"] in class_]
+#         filtered = {"students":{"students": filtered_students}}
+#         # return {"students": filtered_students}
+#         return filtered
+#     blank_query_responce = {"students": {"students":students}}
+#     return blank_query_responce
+
+# # Error handling for missing or incorrect data
+# @app.get("/api/{student_id}")
+# async def get_student(student_id: int):
+#     student = next((s for s in students if s["studentId"] == student_id), None)
+#     if not student:
+#         raise HTTPException(status_code=404, detail="Student not found")
+#     return student
+
+# # Middleware to log request timing
+# @app.middleware("http")
+# async def log_request_time(request: Request, call_next):
+#     import time
+#     start_time = time.time()
+#     response = await call_next(request)
+#     response.headers["X-Request-Time"] = str(time.time() - start_time)
+#     return response
+
+# if __name__ == "__main__":
+#     import uvicorn
+#     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
-from fastapi import FastAPI, HTTPException, Request
+
+
+
+# tds_q9.py
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
-from typing import List
 
-# Initialize FastAPI app
 app = FastAPI()
 
-# Enable CORS for all origins
-app.add_middleware(CORSMiddleware, allow_origins=["*"])
+# Enable CORS for all origins (Allows any frontend to access this API)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
+)
 
-# Load the CSV file into a DataFrame (adjust path if necessary)
-df = pd.read_csv('q-fastapiGA2.csv')
+# Load CSV file
+df = pd.read_csv("./q-fastapiGA2.csv")
 
-# Convert DataFrame to list of dictionaries
-students = df.to_dict(orient="records")
-
-# API endpoint to get all students or filter by class
 @app.get("/api")
-async def get_students(class_: List[str] = None):
+def get_students(class_: list[str] = Query(None, alias="class")):
+    """
+    Fetch student data from the CSV. If 'class' query parameters are provided,
+    filter students by those classes.
+    """
     if class_:
-        # Filter students by specified classes
-        filtered_students = [student for student in students if student["class"] in class_]
-        return {"students": filtered_students}
+        filtered_df = df[df["class"].isin(class_)]
+    else:
+        filtered_df = df
+
+    # Convert to dictionary list
+    students = filtered_df.to_dict(orient="records")
     return {"students": students}
-
-# Error handling for missing or incorrect data
-@app.get("/api/{student_id}")
-async def get_student(student_id: int):
-    student = next((s for s in students if s["studentId"] == student_id), None)
-    if not student:
-        raise HTTPException(status_code=404, detail="Student not found")
-    return student
-
-# Middleware to log request timing
-@app.middleware("http")
-async def log_request_time(request: Request, call_next):
-    import time
-    start_time = time.time()
-    response = await call_next(request)
-    response.headers["X-Request-Time"] = str(time.time() - start_time)
-    return response
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)

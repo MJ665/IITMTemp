@@ -33,15 +33,56 @@
 
 
 
+# from fastapi import FastAPI, Query
+# from fastapi.middleware.cors import CORSMiddleware
+# import json
+# import os
+
+# # Load JSON data
+# json_file = os.path.join(os.path.dirname(__file__), "./q-vercel-python.json")
+# with open(json_file, "r") as file:
+#     students = json.load(file)
+
+# # Create FastAPI app
+# app = FastAPI()
+
+# # Enable CORS for all origins
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],  # Allow all origins
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
+
+# # Endpoint to fetch marks by name
+# @app.get("/api")
+# def get_marks(name: list[str] = Query(default=[])):
+#     if not name:  
+#         # If no name is provided, return full student data
+#         return {"students": students}
+    
+#     # Find marks for given names
+#     marks = [student["marks"] for student in students if student["name"] in name]
+#     return {"marks": marks}
+
+
+
+
+
+
+
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 import json
 import os
 
 # Load JSON data
-json_file = os.path.join(os.path.dirname(__file__), "./q-vercel-python.json")
+json_file = os.path.join(os.path.dirname(__file__), "q-vercel-python.json")
 with open(json_file, "r") as file:
     students = json.load(file)
+
+# Convert list to dictionary for fast lookups
+students_dict = {student["name"]: student["marks"] for student in students}
 
 # Create FastAPI app
 app = FastAPI()
@@ -54,13 +95,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Endpoint to fetch marks by name
-@app.get("/api")
+# API route should be "/api/"
+@app.get("/api/")
 def get_marks(name: list[str] = Query(default=[])):
     if not name:  
-        # If no name is provided, return full student data
         return {"students": students}
     
-    # Find marks for given names
-    marks = [student["marks"] for student in students if student["name"] in name]
+    # Fetch marks **in the order of the request**
+    marks = [students_dict.get(n, None) for n in name]
     return {"marks": marks}
